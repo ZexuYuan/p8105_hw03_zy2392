@@ -45,14 +45,17 @@ There are 134 types of aisle, and fresh vegetables is the item that was be order
 
 ## 3. Make a plot to show the number of items ordered in each aisle.
 
-```{r, fig.width=2000, fig.height=10}
-filter_aisle = 
-  instacart %>% 
-  group_by(aisle) %>% 
-  summarise(order_id = n()) %>% 
-  filter(order_id > 10000)
-
-ggplot(filter_aisle, aes(x = aisle, y = order_id)) + geom_point() + labs(title = "Number of orders for each aisle", x = "Aisle", y = "Number of orders")
+```{r}
+instacart %>% 
+	count(aisle) %>% 
+	filter(n > 10000) %>% 
+	mutate(
+		aisle = factor(aisle),
+		aisle = fct_reorder(aisle, n)
+	) %>% 
+	ggplot(aes(x = aisle, y = n)) + 
+	geom_point() + 
+	theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
 We can see from the plot that fresh fruit and fresh vegetables are the items with the two largest demands, both of their orders are over 150,000 times.
@@ -63,17 +66,18 @@ We can see from the plot that fresh fruit and fresh vegetables are the items wit
 three_most_pop_items = 
   instacart %>% 
   filter(aisle %in% c("baking ingredients","dog food care","packaged vegetables fruits")) %>% 
-  group_by(aisle, product_name) %>% 
-  summarise(product_num = n(), .group = 'keep') %>% 
-  mutate(product_num_rank = rank(desc(product_num))) %>% 
-  filter(product_num_rank <= 3) %>% 
-  select(-product_num_rank) %>% 
-  knitr::kable()
+  group_by(aisle) %>% 
+  count(product_name) %>% 
+  mutate(product_rank = rank(desc(n))) %>% 
+  filter(product_rank <= 3) %>% 
+  select(-product_rank)
+
+knitr::kable(three_most_pop_items)
 ```
 
 The 3 most popular items in baking ingredients aisle are Cane Sugar, Light Brown Sugar, Pure Baking Soda; the 3 most popular items in dog food care aisle are Organix Chicken & Brown Rice Recipe, Small Dog Biscuits, and Snack Sticks Chicken & Rice Recipe Dog Treats; the 3 most popular items in packaged vegetables fruits aisle are Organic Baby Spinach, Organic Blueberries and Organic Raspberries.
 
-## 5. Show the mean hour.
+## 5. Show the mean hour: Apple v.s. Ice cream.
 
 ```{r}
 mean_order_hour = 
