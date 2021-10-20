@@ -95,7 +95,7 @@ colnames(mean_order_hour) = c('', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat
 knitr::kable(mean_order_hour)
 ```
 
-The mean order hour in a week for Coffee Ice Cream are from 13:00 to 15:00 approximately; and the mean order hour in a week for Pink Lady Apple are around from 8:00 to 16:00.
+The mean ordering hour in a week for Coffee Ice Cream are from 13:00 to 15:00 approximately; and the mean ordering hour in a week for Pink Lady Apple are around from 8:00 to 16:00.
 
 # Problem 2
 
@@ -110,11 +110,11 @@ brfss_smart2010
 brfss = 
   brfss_smart2010 %>% 
   janitor::clean_names() %>% 
+  distinct() %>% 
   rename(c("state" = "locationabbr", "location" = "locationdesc")) %>% 
   filter(topic == "Overall Health",
          response %in% c("Excellent","Very good","Good","Fair","Poor")) %>% 
-  distinct() %>% 
-  mutate(response = factor(response, levels = c("Excellent","Very good","Good","Fair","Poor"))) # organize responses as a factor taking levels ordered from “Poor” to “Excellent” -- use 'levels'.
+  mutate(response = factor(response, levels = c("Poor","Fair","Good","Very good","Excellent")))
 ```
 
 ## 2. Which states were observed at 7 or more locations in 2002 and 2010?
@@ -135,6 +135,9 @@ In 2002, Connecticut, Florida, Massachusetts, North Carolina, New Jersey, Pennsy
 
 In 2010, California, Colorado, Florida, Massachusetts, Maryland, North Carolina, Nebraska, New Jersey, New York, Ohio, Pennsylvania, South Carolina, Texas and Washington had at least 7 observed locations.
 
+So there were much more locations in states observed in 2010 than that in 2002, and Florida had the most observed locations (up to 41) in 2010.
+
+
 ## 3. Construct a dataset and make 'spaghetti' plot.
 
 ```{r}
@@ -148,7 +151,7 @@ brfss_subset =
 ggplot(brfss_subset, aes(x = year, y = mean_value, color = state), show.legend = FALSE) + geom_line(aes(group = state)) + labs(x = "Year", y = "Mean of data value")
 ```
 
-The 'spaghetti' plot is messy, so it is least possible to obtain useful information of the dataset by visualization.
+The average data values among states were very fluctuant from 2002 to 2010, and the overall trends were decreasing.
 
 ## 4. Make a two-panel plot showing distribution of 'data_value' in 2006 and 2010.
 
@@ -158,8 +161,10 @@ ny_response =
   filter(state == "NY",
          year %in% c("2006", "2010"))
   
-ggplot(ny_response, aes(x = response, y = data_value)) + geom_point() + facet_grid(.~ year)
+ggplot(ny_response, aes(x = response, y = data_value)) + geom_point() + xlab('response') + ylab('data value') + facet_grid(.~ year)
 ```
+
+The distributions of data values between 2006 and 2010 are similar.
 
 Basically, response 'fair' and 'poor' are always along with lower data value; whereas response 'excellent', 'good' and 'very good' are always along with higher data value. The highest data value in 2010 is in 'very good' response group.
 
