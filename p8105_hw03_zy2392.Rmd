@@ -1,0 +1,236 @@
+---
+title: "p8105_hw03_zy2392"
+author: "Stephen Yuan"
+date: "10/12/2021"
+output: github_document
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+library(p8105.datasets)
+library(patchwork)
+```
+
+# Problem 1
+
+```{r, include = TRUE}
+data("instacart")
+instacart %>% 
+  janitor::clean_names() %>% 
+  head(10)
+```
+
+## 1. Short description:
+
+There are `r nrow(instacart)` observations and `r ncol(instacart)` features in the dataset -- instacart, variables include `r names(instacart)`. 
+
+Specifically,  'order_id', 'product_id', 'user_id', 'aisle_id', 'department_id' refer to order, commodity, customer, aisle, department identifier accordingly; add_to_cart_order refers to each product was added to the cart.
+
+Some variables also indicate date and time of the order: 'order_dow' refers to the day of the week on which the order was placed as well as 'order_hour_of_day' refers to the hour of the day on which the order was placed.
+
+Other variables, for example, 'order_number' refers to the order sequence for this customer, and 'days_since_prior_order' refers to the days since the last order, NA if the order is his/her first order (order_number = 1). 
+
+## 2. Count ailes number and Find the aisle with the most numbers of orders.
+
+```{r}
+aisle_num = n_distinct(pull(instacart,aisle_id)) 
+
+aisle_most_order_num = 
+  instacart %>% 
+  group_by(aisle) %>% 
+  summarise(order_id = n()) %>% 
+  filter(order_id == max(order_id)) 
+```
+
+There are 134 types of aisle, and fresh vegetables is the item that was be ordered most times.
+
+## 3. Make a plot to show the number of items ordered in each aisle.
+
+```{r, fig.width=2000, fig.height=10}
+filter_aisle = 
+  instacart %>% 
+  group_by(aisle) %>% 
+  summarise(order_id = n()) %>% 
+  filter(order_id > 10000)
+
+ggplot(filter_aisle, aes(x = aisle, y = order_id)) + geom_point() + labs(title = "Number of orders for each aisle", x = "Aisle", y = "Number of orders")
+```
+
+We can see from the plot that fresh fruit and fresh vegetables are the items with the two largest demands, both of their orders are over 150,000 times.
+
+## 4. Show the three most popular items.
+
+```{r}
+three_most_pop_items = 
+  instacart %>% 
+  filter(aisle %in% c("baking ingredients","dog food care","packaged vegetables fruits")) %>% 
+  group_by(aisle, product_name) %>% 
+  summarise(product_num = n(), .group = 'keep') %>% 
+  mutate(product_num_rank = rank(desc(product_num))) %>% 
+  filter(product_num_rank <= 3) %>% 
+  select(-product_num_rank) %>% 
+  knitr::kable()
+```
+
+The 3 most popular items in baking ingredients aisle are Cane Sugar, Light Brown Sugar, Pure Baking Soda; the 3 most popular items in dog food care aisle are Organix Chicken & Brown Rice Recipe, Small Dog Biscuits, and Snack Sticks Chicken & Rice Recipe Dog Treats; the 3 most popular items in packaged vegetables fruits aisle are Organic Baby Spinach, Organic Blueberries and Organic Raspberries.
+
+## 5. Show the mean hour.
+
+```{r}
+mean_order_hour = 
+  instacart %>% 
+  filter(product_name %in% c("Pink Lady Apple", "Coffee Ice Cream")) %>% 
+  group_by(product_name, order_dow) %>% 
+  summarise(mean_order_hour = mean(order_hour_of_day)) %>% 
+  pivot_wider(
+    names_from = order_dow,
+    values_from = mean_order_hour
+  )
+
+colnames(mean_order_hour) = c('', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
+
+knitr::kable(mean_order_hour)
+```
+
+The mean order hour in a week for Coffee Ice Cream are from 13:00 to 15:00 approximately; and the mean order hour in a week for Pink Lady Apple are around from 8:00 to 16:00.
+
+# Problem 2
+
+## 1. Data cleaning.
+
+```{r load dataset, include=FALSE}
+data("BRFSS")
+brfss_smart2010
+```
+
+```{r}
+brfss = 
+  brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  rename(c("state" = "locationabbr", "location" = "locationdesc")) %>% 
+  filter(topic == "Overall Health",
+         response %in% c("Excellent","Very good","Good","Fair","Poor")) %>% 
+  distinct() %>% 
+  mutate(response = factor(response, levels = c("Excellent","Very good","Good","Fair","Poor"))) # organize responses as a factor taking levels ordered from “Poor” to “Excellent” -- use 'levels'.
+```
+
+## 2. Which states were observed at 7 or more locations in 2002 and 2010?
+
+```{r}
+location_num = 
+  brfss %>% 
+    filter(year %in% c("2002", "2010")) %>% 
+    group_by(year, state) %>% 
+    summarise(observed_location_num = n_distinct(location)) %>% 
+    filter(observed_location_num >= 7)
+
+location_num %>% 
+  knitr::kable()
+```
+
+In 2002, Connecticut, Florida, Massachusetts, North Carolina, New Jersey, Pennsylvania had 7 or more observed locations; 
+
+In 2010, California, Colorado, Florida, Massachusetts, Maryland, North Carolina, Nebraska, New Jersey, New York, Ohio, Pennsylvania, South Carolina, Texas and Washington had at least 7 observed locations.
+
+## 3. Construct a dataset and make 'spaghetti' plot.
+
+```{r}
+brfss_subset = 
+  brfss %>% 
+  filter(response == "Excellent") %>% 
+  select(year, state, location, data_value) %>% 
+  group_by(year, state) %>% 
+  summarise(mean_value = mean(data_value))
+
+ggplot(brfss_subset, aes(x = year, y = mean_value, color = state), show.legend = FALSE) + geom_line(aes(group = state)) + labs(x = "Year", y = "Mean of data value")
+```
+
+The 'spaghetti' plot is messy, so it is least possible to obtain useful information of the dataset by visualization.
+
+## 4. Make a two-panel plot showing distribution of 'data_value' in 2006 and 2010.
+
+```{r}
+ny_response = 
+  brfss %>% 
+  filter(state == "NY",
+         year %in% c("2006", "2010"))
+  
+ggplot(ny_response, aes(x = response, y = data_value)) + geom_point() + facet_grid(.~ year)
+```
+
+Basically, response 'fair' and 'poor' are always along with lower data value; whereas response 'excellent', 'good' and 'very good' are always along with higher data value. The highest data value in 2010 is in 'very good' response group.
+
+# Problem 3
+
+## 1. Tidy data.
+
+Final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; encode data with reasonable variable classes. 
+
+Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+
+```{r}
+accel_raw = read_csv("./accel_data.csv") %>% 
+  janitor::clean_names()
+
+accel = 
+  accel_raw %>% 
+  rename("week_id" = "week") %>% 
+  mutate(
+    week = ifelse(day %in% c("Staturday", "Sunday"), "weekends", "weekdays"),
+    week_id = as.integer(week_id),
+    day_id = as.integer(day_id)
+  ) %>% 
+  relocate(week_id, day_id, week, day)
+
+knitr::kable(head(accel,7))
+```
+
+The dataset has `r nrow(accel)` observations and `r ncol(accel)` variables, and 1440 variables in total recording the activity observations.
+Time variables include 'day_id', 'week_id', 'week', and 'day'.
+
+## 2. Create a table.
+
+```{r}
+accel_agg = 
+  accel %>% 
+  mutate(total_act = rowSums(across(activity_1:activity_1440))) %>% 
+  relocate(week_id, day_id, week, day, total_act)
+
+accel_agg_plot = 
+  accel_agg %>% 
+  group_by(day) %>% 
+  summarise(total_act_mean = mean(total_act)) %>% 
+  mutate(day = factor(day, levels = c('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday','Friday', 'Saturday')))
+
+ggplot(accel_agg_plot, aes(x = day, y = total_act_mean, color = day)) + geom_bar(stat = "identity")
+```
+
+The patient has the highest activity value on average on Friday whereas the lowest value on Saturday.
+
+## 3. Make a single-panel plot.
+
+```{r}
+accel_time_course = 
+  accel %>%
+  select(week_id, day, activity_1:activity_1440) %>%
+  pivot_longer(
+    activity_1:activity_1440,
+    names_to = "activity_time",
+    values_to = "activity_value"
+  ) %>%
+  separate(activity_time, c(NA, 'activity_time'), sep = '_') %>% 
+  mutate(
+    activity_time = as.integer(activity_time),
+    day = factor(day, levels = c('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday','Friday', 'Saturday'))) %>%
+  filter(activity_value > 2000)
+
+accel_time_course %>%
+  ggplot(aes(x = activity_time, y = activity_value, color = day)) +
+  geom_point(alpha = 2) 
+```
+
+The patient is active around the afternoon on Saturday and Sunday, and active around 20:00 in the night on Friday; he or she is basically not active between 0:00 am to 6:00 am, it is probably his or her sleep time.
+
+
+
+
+
