@@ -172,10 +172,6 @@ Basically, response 'fair' and 'poor' are always along with lower data value; wh
 
 ## 1. Tidy data.
 
-Final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; encode data with reasonable variable classes. 
-
-Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
-
 ```{r}
 accel_raw = read_csv("./accel_data.csv") %>% 
   janitor::clean_names()
@@ -190,7 +186,7 @@ accel =
   ) %>% 
   relocate(week_id, day_id, week, day)
 
-knitr::kable(head(accel,7))
+str(knitr::kable(head(accel,7)))
 ```
 
 The dataset has `r nrow(accel)` observations and `r ncol(accel)` variables, and 1440 variables in total recording the activity observations.
@@ -199,21 +195,22 @@ Time variables include 'day_id', 'week_id', 'week', and 'day'.
 ## 2. Create a table.
 
 ```{r}
-accel_agg = 
-  accel %>% 
-  mutate(total_act = rowSums(across(activity_1:activity_1440))) %>% 
-  relocate(week_id, day_id, week, day, total_act)
-
-accel_agg_plot = 
-  accel_agg %>% 
-  group_by(day) %>% 
-  summarise(total_act_mean = mean(total_act)) %>% 
-  mutate(day = factor(day, levels = c('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday','Friday', 'Saturday')))
-
-ggplot(accel_agg_plot, aes(x = day, y = total_act_mean, color = day)) + geom_bar(stat = "identity")
+accel = cbind(accel, 
+              activity_total = rowSums(accel[,c(5:1444)]))
 ```
 
-The patient has the highest activity value on average on Friday whereas the lowest value on Saturday.
+Create a table showing these totals.
+
+```{r}
+accel %>%
+  group_by(day) %>%
+  summarise(
+    activity_sum_by_day = sum(activity_total)
+  ) %>%
+  knitr::kable()
+```
+
+The patient is most active on average on Friday whereas most inactive on Saturday.
 
 ## 3. Make a single-panel plot.
 
@@ -234,12 +231,9 @@ accel_time_course =
 
 accel_time_course %>%
   ggplot(aes(x = activity_time, y = activity_value, color = day)) +
-  geom_point(alpha = 2) 
+  geom_point(alpha = 2) +
+  labs(title = 'Activity patterns throughout a week')
 ```
 
-The patient is active around the afternoon on Saturday and Sunday, and active around 20:00 in the night on Friday; he or she is basically not active between 0:00 am to 6:00 am, it is probably his or her sleep time.
-
-
-
-
+The patient is most active around the afternoon on Saturday and Sunday, and active around 20:00 in the night on Friday; he or she is basically not active between 0:00 am to 6:00 am, it is probably his or her sleep time.
 
